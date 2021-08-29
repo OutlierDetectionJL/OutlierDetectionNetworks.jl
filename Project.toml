@@ -1,0 +1,13 @@
+name = "OutlierDetectionFlux"
+uuid = "c7f57e37-4fcb-4a0b-a36c-c2204bc839a7"
+authors = ["David Muhr <muhrdavid@gmail.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
