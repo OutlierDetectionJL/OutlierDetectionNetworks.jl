@@ -72,7 +72,7 @@ mutable struct DSADDetector <: SupervisedDetector
     end
 end
 
-struct DSADModel <: Model
+struct DSADModel <: DetectorModel
     chain::Chain
     center::AbstractArray
 end

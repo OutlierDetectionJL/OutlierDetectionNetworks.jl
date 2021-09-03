@@ -32,7 +32,7 @@ References
 ----------
 [1] Aggarwal, Charu C. (2017): Outlier Analysis.
 """
-OD.@detector_model struct AEDetector <: UnsupervisedDetector
+OD.@detector struct AEDetector <: UnsupervisedDetector
     encoder::Chain = Chain()
     decoder::Chain = Chain()
     batchsize::Integer = 32
@@ -43,7 +43,7 @@ OD.@detector_model struct AEDetector <: UnsupervisedDetector
     loss::Function = mse
 end
 
-struct AEModel <: Model
+struct AEModel <: DetectorModel
     chain::Chain
 end
 

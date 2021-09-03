@@ -40,7 +40,7 @@ References
 [1] Huang, Chaoqin; Ye, Fei; Zhang, Ya; Wang, Yan-Feng; Tian, Qi (2020): ESAD: End-to-end Deep Semi-supervised Anomaly
 Detection.
 """
-OD.@detector_model mutable struct ESADDetector <: SupervisedDetector
+OD.@detector mutable struct ESADDetector <: SupervisedDetector
     encoder::Chain = Chain()
     decoder::Chain = Chain()
     batchsize::Integer = 32::(_ > 0)
@@ -53,7 +53,7 @@ OD.@detector_model mutable struct ESADDetector <: SupervisedDetector
     noise::Function = identity
 end
 
-struct ESADModel <: Model
+struct ESADModel <: DetectorModel
     chain::Chain
 end
 
