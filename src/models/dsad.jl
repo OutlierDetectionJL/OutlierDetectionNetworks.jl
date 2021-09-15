@@ -77,7 +77,7 @@ struct DSADModel <: DetectorModel
     center::AbstractArray
 end
 
-function OD.fit(detector::DSADDetector, X::Data, y::Labels)::Fit
+function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity=0)::Fit
     makeLoader = i -> DataLoader((X, y), batchsize=detector.batchsize[i], shuffle=detector.shuffle[i],
         partial=detector.partial[i])
     loaderPretrain = makeLoader(1)

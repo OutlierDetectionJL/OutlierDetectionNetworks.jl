@@ -47,7 +47,7 @@ struct AEModel <: DetectorModel
     chain::Chain
 end
 
-function OD.fit(detector::AEDetector, X::Data)::Fit
+function OD.fit(detector::AEDetector, X::Data; verbosity=0)::Fit
     loader = DataLoader(X, batchsize=detector.batchsize, shuffle=detector.shuffle, partial=detector.partial)
 
     # Create the autoencoder
