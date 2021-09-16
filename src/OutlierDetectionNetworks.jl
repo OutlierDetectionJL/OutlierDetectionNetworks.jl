@@ -9,17 +9,18 @@ module OutlierDetectionNetworks
     include("models/esad.jl")
     include("templates/templates.jl")
 
-    MODELS = (AEDetector,
-              DSADDetector,
-              ESADDetector)
+    const UUID = "c7f57e37-4fcb-4a0b-a36c-c2204bc839a7"
+    const MODELS = [:AEDetector,
+                    :DSADDetector,
+                    :ESADDetector]
 
-    ORG = "OutlierDetectionJL"
-    UUID = "51249a0a-cb36-4849-8e04-30c7f8d311bb"
     for model in MODELS
-        @eval(export $model)
-        OD.metadata_pkg(model, package_name=@__MODULE__, package_uuid=UUID,
-                        package_url="https://github.com/$ORG/$(@__MODULE__).jl",
-                        is_pure_julia=true, package_license="MIT", is_wrapper=false)
-        OD.load_path(::Type{model}) = "$(@__MODULE__).$model"
+        @eval begin
+            OD.metadata_pkg($model, package_name=string(@__MODULE__), package_uuid=$UUID,
+                            package_url="https://github.com/OutlierDetectionJL/$(@__MODULE__).jl",
+                            is_pure_julia=true, package_license="MIT", is_wrapper=false)
+            OD.load_path(::Type{$model}) = string($model)
+            export $model
+        end
     end
 end
