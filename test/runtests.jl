@@ -2,6 +2,9 @@ using OutlierDetectionNetworks
 using OutlierDetectionNetworks.Templates
 using OutlierDetectionTest
 
+# Test the metadata of all exported detectors
+test_meta.(eval.(OutlierDetectionNetworks.MODELS))
+
 data = TestData()
 run_test(detector) = test_detector(detector, data)
 
