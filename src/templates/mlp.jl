@@ -1,10 +1,6 @@
 using Flux: Dense, BatchNorm, Chain, relu, sigmoid
 
-"""
-    DenseBNReLU(in, out; bias)
-
-A linear layer followed by batch normalization.
-"""
+# A linear layer followed by batch normalization.
 function DenseBNReLU(in:: Integer, out:: Integer; bias = false)
     dense = Dense(in, out; bias=bias)
     batchnorm = BatchNorm(out, relu)
