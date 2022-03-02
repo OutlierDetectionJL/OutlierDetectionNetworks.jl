@@ -1,4 +1,5 @@
 module OutlierDetectionNetworks
+    using CategoricalArrays
     using OutlierDetectionInterface
     using OutlierDetectionInterface:SCORE_UNSUPERVISED, SCORE_SUPERVISED
     const OD = OutlierDetectionInterface

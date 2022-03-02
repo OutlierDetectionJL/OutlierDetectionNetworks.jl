@@ -1,7 +1,7 @@
 using Flux: train!, params
-using IterTools:ncycle
-using Statistics:mean
-using LinearAlgebra:norm
+using IterTools: ncycle
+using Statistics: mean
+using LinearAlgebra: norm
 
 """
     ESADDetector(encoder = Chain(),
@@ -20,7 +20,7 @@ algorithm was published by Huang et al., see [1].
 
 Parameters
 ----------
-$AE_LOSS
+$AE_PARAMS
 
     λ1::Real
 Weighting parameter of the norm loss, which minimizes the empirical variance and thus minimizes entropy.
@@ -58,7 +58,7 @@ struct ESADModel <: DetectorModel
 end
 
 function OD.fit(detector::ESADDetector, X::Data, y::Labels; verbosity)::Fit
-    loader = DataLoader((X, y), batchsize=detector.batchsize, shuffle=detector.shuffle, partial=detector.partial)
+    loader = DataLoader((X, y), batchsize = detector.batchsize, shuffle = detector.shuffle, partial = detector.partial)
 
     # Create the autoencoder // TODO: deepcopy the encoder/decoder?
     model = Chain(detector.encoder, detector.decoder, detector.encoder)
@@ -66,9 +66,12 @@ function OD.fit(detector::ESADDetector, X::Data, y::Labels; verbosity)::Fit
     # Precalculate dimensions
     dims = ndims(X)
 
+    # Determine the outlier class
+    outlier_class = last(levels(y))
+
     # Calculate loss as described in the paper
     train!((x, y) -> _esadloss(model[1:2](x), x, model(x), model[1](x), y, detector.λ1, detector.λ2, detector.noise,
-    dims), params(model), ncycle(loader, detector.epochs), detector.opt)
+            dims, outlier_class), params(model), ncycle(loader, detector.epochs), detector.opt)
 
     # Score as described in the paper
     scores = _esadscore(model[1:2](X), X, model(X), dims)
@@ -79,15 +82,15 @@ function OD.transform(_::ESADDetector, model::ESADModel, X::Data)::Scores
     _esadscore(model.chain[1:2](X), X, model.chain(X), ndims(X))
 end
 
-function _esadloss(x̂, x, ẑ, z, y, λ1, λ2, noise, dims)
+function _esadloss(x̂, x, ẑ, z, y, λ1, λ2, noise, dims, outlier_class)
     # The esad loss function is based on the distance to the hypersphere center. The inverse distance is used if an
     # example is an outlier and labeled samples are weighted using the hyperparameter eta
-    rec_loss(y, rec_outlier, rec_normal) = ifelse(y == CLASS_OUTLIER, rec_outlier, rec_normal)
-    norm_loss(y, origin_dist) = ifelse(y == CLASS_OUTLIER, origin_dist ^ -1, origin_dist)
+    rec_loss(y, rec_outlier, rec_normal) = ifelse(y == outlier_class, rec_outlier, rec_normal)
+    norm_loss(y, origin_dist) = ifelse(y == outlier_class, origin_dist^-1, origin_dist)
 
-    rec_outlier = dropdims(sum((x̂ .- noise(x)).^2, dims=1:dims - 1), dims=1)
-    rec_normal = dropdims(sum((x̂ .- x).^2, dims=1:dims - 1), dims=1)
-    origin_dist = map(norm, eachslice(ẑ; dims=ndims(ẑ)))
+    rec_outlier = dropdims(sum((x̂ .- noise(x)) .^ 2, dims = 1:dims-1), dims = 1)
+    rec_normal = dropdims(sum((x̂ .- x) .^ 2, dims = 1:dims-1), dims = 1)
+    origin_dist = map(norm, eachslice(ẑ; dims = ndims(ẑ)))
 
     # reconstruction error (optimize mutual information of latent)
     l_rec_semi = rec_loss.(y, rec_outlier, rec_normal) |> mean
@@ -104,7 +107,7 @@ end
 
 function _esadscore(x̂, x, ẑ, dims)
     # Combines reconstruction loss and distance to the origin
-    origin_dist = map(norm, eachslice(ẑ; dims=ndims(ẑ)))
-    rec_loss = dropdims(mean((x̂ .- x).^2, dims=1:dims - 1), dims=1)
+    origin_dist = map(norm, eachslice(ẑ; dims = ndims(ẑ)))
+    rec_loss = dropdims(mean((x̂ .- x) .^ 2, dims = 1:dims-1), dims = 1)
     rec_loss .+ origin_dist
 end

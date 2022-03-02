@@ -1,6 +1,6 @@
 using Flux: train!, params
-using IterTools:ncycle
-using Statistics:mean
+using IterTools: ncycle
+using Statistics: mean
 
 """
     DSADDetector(encoder = Chain(),
@@ -53,15 +53,15 @@ mutable struct DSADDetector <: SupervisedDetector
     decoder::Chain
     batchsize::Tuple{Integer,Integer}
     epochs::Tuple{Integer,Integer}
-    shuffle::Tuple{Bool, Bool}
-    partial::Tuple{Bool, Bool}
+    shuffle::Tuple{Bool,Bool}
+    partial::Tuple{Bool,Bool}
     opt::Any
     loss::Function
     eta::Number
     eps::Number
-    callback::Tuple{Function, Function}
-    function DSADDetector(;encoder::Chain = Chain(), decoder::Chain = Chain(), batchsize=32, epochs=1, shuffle=false,
-        partial=true, opt=ADAM(), loss=mse, eta=1, eps=1e-6, callback=(_ -> () -> ()))
+    callback::Tuple{Function,Function}
+    function DSADDetector(; encoder::Chain = Chain(), decoder::Chain = Chain(), batchsize = 32, epochs = 1, shuffle = false,
+        partial = true, opt = ADAM(), loss = mse, eta = 1, eps = 1e-6, callback = (_ -> () -> ()))
 
         # unify all possible tuples to tuples
         tuplify = t -> isa(t, Tuple) ? t : (t, t)
@@ -78,8 +78,8 @@ struct DSADModel <: DetectorModel
 end
 
 function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
-    makeLoader = i -> DataLoader((X, y), batchsize=detector.batchsize[i], shuffle=detector.shuffle[i],
-        partial=detector.partial[i])
+    makeLoader = i -> DataLoader((X, y), batchsize = detector.batchsize[i], shuffle = detector.shuffle[i],
+        partial = detector.partial[i])
     loaderPretrain = makeLoader(1)
     loaderTrain = makeLoader(2)
 
@@ -88,18 +88,21 @@ function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
 
     # pretraining (train the autoencoder based on a reconstruction loss)
     train!((x, _) -> detector.loss(model(x), x), params(model), ncycle(loaderPretrain, detector.epochs[1]),
-                                      detector.opt[1]; cb=detector.callback[1](model))
+        detector.opt[1]; cb = detector.callback[1](model))
 
-    # Only use normal data and unlabeled data to calculate hypersphere center
+    # Determine the normal class
+    normal_class = first(levels(y))
+
+    # Use normal data and unlabeled data to calculate hypersphere center
     dims = ndims(X)
     nColons = X -> ntuple(_ -> :, dims - 1)
-    prediction = detector.encoder(X[nColons(X)..., findall((y .=== missing) .| (y .== CLASS_NORMAL))])
-    center = dropdims(mean(prediction, dims=dims), dims=dims)
+    prediction = detector.encoder(X[nColons(X)..., findall((y .=== missing) .| (y .== normal_class))])
+    center = dropdims(mean(prediction, dims = dims), dims = dims)
 
     # training based on the calculated hypersphere center
-    train!((x, y) -> svddLoss(detector.encoder(x), center, y, detector.eta, detector.eps, dims),
-           params(detector.encoder), ncycle(loaderTrain, detector.epochs[2]), detector.opt[2];
-           cb=detector.callback[2](detector.encoder))
+    train!((x, y) -> svddLoss(detector.encoder(x), center, y, detector.eta, detector.eps, dims, normal_class),
+        params(detector.encoder), ncycle(loaderTrain, detector.epochs[2]), detector.opt[2];
+        cb = detector.callback[2](detector.encoder))
 
     scores = svddScore(detector.encoder(X), center, dims)
     return DSADModel(model, center), scores
@@ -109,17 +112,17 @@ function OD.transform(detector::DSADDetector, model::DSADModel, X::Data)::Scores
     svddScore(detector.encoder(X), model.center, ndims(X))
 end
 
-function svddLoss(latent, center, y, eta, eps, dims)
+function svddLoss(latent, center, y, eta, eps, dims, normal_class)
     # The svdd loss function is based on the distance to the hypersphere center. The inverse distance is used if an
     # example is an outlier and labeled samples are weighted using the hyperparameter eta.
     conditional_dist(y, dist, eps_dist) = ifelse(y === missing, dist,
-        eta .* (y == CLASS_NORMAL ? eps_dist : eps_dist .^ -1))
-    dist = dropdims(sum((latent .- center) .^ 2, dims=1:dims-1), dims=1)
+        eta .* (y == normal_class ? eps_dist : eps_dist .^ -1))
+    dist = dropdims(sum((latent .- center) .^ 2, dims = 1:dims-1), dims = 1)
     eps_dist = dist .+ eps
     mean(conditional_dist.(y, dist, eps_dist))
 end
 
 function svddScore(latent, center, dims)
     # Element-wise mean squared distance to the hypersphere center.
-    dropdims(mean((latent .- center) .^ 2, dims=1:dims-1), dims=1)
+    dropdims(mean((latent .- center) .^ 2, dims = 1:dims-1), dims = 1)
 end
