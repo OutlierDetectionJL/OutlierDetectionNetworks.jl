@@ -1,7 +1,7 @@
 using Flux: Chain, train!, params
 using Flux.Losses:mse
 using Flux.Data:DataLoader
-using Flux.Optimise:ADAM
+using Flux.Optimise:Adam
 using IterTools:ncycle
 using Statistics:mean
 
@@ -12,7 +12,7 @@ using Statistics:mean
                epochs = 1,
                shuffle = false,
                partial = true,
-               opt = ADAM(),
+               opt = Adam(),
                loss = mse)
 
 Calculate the anomaly score of an instance based on the reconstruction loss of an autoencoder, see [1] for an
@@ -39,7 +39,7 @@ OD.@detector struct AEDetector <: UnsupervisedDetector
     epochs::Integer = 1
     shuffle::Bool = false
     partial::Bool = true
-    opt::Any = ADAM()
+    opt::Any = Adam()
     loss::Function = mse
 end
 

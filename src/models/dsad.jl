@@ -9,7 +9,7 @@ using Statistics: mean
                     epochs = 1,
                     shuffle = true,
                     partial = false,
-                    opt = ADAM(),
+                    opt = Adam(),
                     loss = mse,
                     eta = 1,
                     eps = 1e-6,
@@ -61,7 +61,7 @@ mutable struct DSADDetector <: SupervisedDetector
     eps::Number
     callback::Tuple{Function,Function}
     function DSADDetector(; encoder::Chain = Chain(), decoder::Chain = Chain(), batchsize = 32, epochs = 1, shuffle = false,
-        partial = true, opt = ADAM(), loss = mse, eta = 1, eps = 1e-6, callback = (_ -> () -> ()))
+        partial = true, opt = Adam(), loss = mse, eta = 1, eps = 1e-6, callback = (_ -> () -> ()))
 
         # unify all possible tuples to tuples
         tuplify = t -> isa(t, Tuple) ? t : (t, t)
