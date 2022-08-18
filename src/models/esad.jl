@@ -10,7 +10,7 @@ using LinearAlgebra: norm
                 epochs = 1,
                 shuffle = false,
                 partial = true,
-                opt = ADAM(),
+                opt = Adam(),
                 λ1 = 1,
                 λ2 = 1,
                 noise = identity)
@@ -47,7 +47,7 @@ OD.@detector mutable struct ESADDetector <: SupervisedDetector
     epochs::Integer = 1::(_ > 0)
     shuffle::Bool = false
     partial::Bool = true
-    opt::Any = ADAM()
+    opt::Any = Adam()
     λ1::Number = 1
     λ2::Number = 1
     noise::Function = identity
