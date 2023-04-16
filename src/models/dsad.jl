@@ -1,4 +1,4 @@
-using Flux: train!, params
+using Flux: @functor, setup, train!
 using IterTools: ncycle
 using Statistics: mean
 
@@ -60,8 +60,12 @@ mutable struct DSADDetector <: SupervisedDetector
     eta::Number
     eps::Number
     callback::Tuple{Function,Function}
-    function DSADDetector(; encoder::Chain = Chain(), decoder::Chain = Chain(), batchsize = 32, epochs = 1, shuffle = false,
-        partial = true, opt = Adam(), loss = mse, eta = 1, eps = 1e-6, callback = (_ -> () -> ()))
+    function DSADDetector(;
+                          encoder::Chain = Chain(),
+                          decoder::Chain = Chain(),
+                          batchsize = 32, epochs = 1, shuffle = false,
+                          partial = true, opt = Adam(), loss = mse, eta = 1, eps = 1e-6,
+                          callback = (((m, x) -> ()), ((m, x, y) -> ())))
 
         # unify all possible tuples to tuples
         tuplify = t -> isa(t, Tuple) ? t : (t, t)
@@ -77,6 +81,9 @@ struct DSADModel <: DetectorModel
     center::AbstractArray
 end
 
+(m::DSADModel)(x) = svddScore(m.chain(x), m.center, ndims(x))
+@functor DSADModel (chain,)
+
 function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
     makeLoader = i -> DataLoader((X, y), batchsize = detector.batchsize[i], shuffle = detector.shuffle[i],
         partial = detector.partial[i])
@@ -84,11 +91,19 @@ function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
     loaderTrain = makeLoader(2)
 
     # Create the autoencoder
-    model = Chain(detector.encoder, detector.decoder)
+    ae_model = Chain(detector.encoder, detector.decoder)
 
     # pretraining (train the autoencoder based on a reconstruction loss)
-    train!((x, _) -> detector.loss(model(x), x), params(model), ncycle(loaderPretrain, detector.epochs[1]),
-        detector.opt[1]; cb = detector.callback[1](model))
+    pretrain_state = setup(detector.opt[1], ae_model)
+    for epoch in 1:detector.epochs[1]
+        train!(ae_model,
+               loaderPretrain,
+               pretrain_state
+               ) do model, x, _
+                   detector.loss(model(x), x)
+               end
+        detector.callback[1](ae_model, X)
+    end
 
     # Determine the normal class
     normal_class = first(levels(y))
@@ -99,17 +114,25 @@ function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
     prediction = detector.encoder(X[nColons(X)..., findall((y .=== missing) .| (y .== normal_class))])
     center = dropdims(mean(prediction, dims = dims), dims = dims)
 
+    ad_model = DSADModel(detector.encoder, center)
     # training based on the calculated hypersphere center
-    train!((x, y) -> svddLoss(detector.encoder(x), center, y, detector.eta, detector.eps, dims, normal_class),
-        params(detector.encoder), ncycle(loaderTrain, detector.epochs[2]), detector.opt[2];
-        cb = detector.callback[2](detector.encoder))
+    train_state = setup(detector.opt[2], ad_model)
+    for epoch in 1:detector.epochs[2]
+        train!(ad_model,
+               loaderTrain,
+               train_state
+               ) do model, x, y
+                   svddLoss(model.chain(x), model.center, y, detector.eta, detector.eps, dims, normal_class)
+               end
+        detector.callback[2](ad_model, X, y)
+    end
 
     scores = svddScore(detector.encoder(X), center, dims)
-    return DSADModel(model, center), scores
+    return DSADModel(detector.encoder, center), scores
 end
 
 function OD.transform(detector::DSADDetector, model::DSADModel, X::Data)::Scores
-    svddScore(detector.encoder(X), model.center, ndims(X))
+    model(X)
 end
 
 function svddLoss(latent, center, y, eta, eps, dims, normal_class)
