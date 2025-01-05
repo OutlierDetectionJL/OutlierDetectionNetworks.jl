@@ -1,7 +1,4 @@
-using Flux: Chain, train!, params
-using Flux.Losses:mse
-using Flux.Data:DataLoader
-using Flux.Optimise:Adam
+using Flux: Chain, train!, params, mse, DataLoader, Adam
 using IterTools:ncycle
 using Statistics:mean
 
