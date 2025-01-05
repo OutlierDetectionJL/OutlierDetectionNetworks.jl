@@ -1,7 +1,7 @@
 name = "OutlierDetectionNetworks"
 uuid = "c7f57e37-4fcb-4a0b-a36c-c2204bc839a7"
 authors = ["David Muhr <muhrdavid@gmail.com> and contributors"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
@@ -9,11 +9,12 @@ Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OutlierDetectionInterface = "1722ece6-f894-4ffc-b6be-6ca1174e2011"
+OutlierDetectionTest = "66620973-d34b-445b-a614-4040704cad69"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 CategoricalArrays = "0.10"
-Flux = "0.12, 0.13, 0.14"
+Flux = "0.14, 0.15, 0.16"
 IterTools = "1"
 OutlierDetectionInterface = "0.1, 0.2"
 julia = "1.6 - 1"
