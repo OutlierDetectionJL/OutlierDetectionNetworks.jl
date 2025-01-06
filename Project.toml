@@ -1,7 +1,7 @@
 name = "OutlierDetectionNetworks"
 uuid = "c7f57e37-4fcb-4a0b-a36c-c2204bc839a7"
 authors = ["David Muhr <muhrdavid@gmail.com> and contributors"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
@@ -16,7 +16,7 @@ CategoricalArrays = "0.10"
 Flux = "0.12, 0.13, 0.14"
 IterTools = "1"
 OutlierDetectionInterface = "0.1, 0.2"
-julia = "1.6 - 1"
+julia = "1.6 - 1.9"
 
 [extras]
 OutlierDetectionTest = "66620973-d34b-445b-a614-4040704cad69"
