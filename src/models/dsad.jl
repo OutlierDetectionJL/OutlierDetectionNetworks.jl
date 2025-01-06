@@ -1,5 +1,4 @@
-using Flux: @functor, setup, train!
-using IterTools: ncycle
+using Flux: setup, train!
 using Statistics: mean
 
 """
@@ -79,10 +78,10 @@ end
 struct DSADModel <: DetectorModel
     chain::Chain
     center::AbstractArray
+    ndims::Integer
 end
 
-(m::DSADModel)(x) = svddScore(m.chain(x), m.center, ndims(x))
-@functor DSADModel (chain,)
+(m::DSADModel)(x) = svddScore(m.chain(x), m.center, m.ndims)
 
 function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
     makeLoader = i -> DataLoader((X, y), batchsize = detector.batchsize[i], shuffle = detector.shuffle[i],
@@ -95,7 +94,7 @@ function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
 
     # pretraining (train the autoencoder based on a reconstruction loss)
     pretrain_state = setup(detector.opt[1], ae_model)
-    for epoch in 1:detector.epochs[1]
+    for _ in 1:detector.epochs[1]
         train!(ae_model,
                loaderPretrain,
                pretrain_state
@@ -114,10 +113,10 @@ function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
     prediction = detector.encoder(X[nColons(X)..., findall((y .=== missing) .| (y .== normal_class))])
     center = dropdims(mean(prediction, dims = dims), dims = dims)
 
-    ad_model = DSADModel(detector.encoder, center)
+    ad_model = DSADModel(detector.encoder, center, dims)
     # training based on the calculated hypersphere center
     train_state = setup(detector.opt[2], ad_model)
-    for epoch in 1:detector.epochs[2]
+    for _ in 1:detector.epochs[2]
         train!(ad_model,
                loaderTrain,
                train_state
@@ -127,11 +126,10 @@ function OD.fit(detector::DSADDetector, X::Data, y::Labels; verbosity)::Fit
         detector.callback[2](ad_model, X, y)
     end
 
-    scores = svddScore(detector.encoder(X), center, dims)
-    return DSADModel(detector.encoder, center), scores
+    return ad_model, ad_model(X)
 end
 
-function OD.transform(detector::DSADDetector, model::DSADModel, X::Data)::Scores
+function OD.transform(_::DSADDetector, model::DSADModel, X::Data)::Scores
     model(X)
 end
 

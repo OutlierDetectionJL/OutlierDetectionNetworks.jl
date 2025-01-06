@@ -1,5 +1,4 @@
-using Flux: Chain, train!, params, mse, DataLoader, Adam
-using IterTools:ncycle
+using Flux: Chain, train!, setup, DataLoader, Adam, mse
 using Statistics:mean
 
 """
@@ -42,21 +41,33 @@ end
 
 struct AEModel <: DetectorModel
     chain::Chain
+    loss::Function
 end
+
+(m::AEModel)(x) = m.loss(m.chain(x), x, agg=instance_mean)
 
 function OD.fit(detector::AEDetector, X::Data; verbosity)::Fit
     loader = DataLoader(X, batchsize=detector.batchsize, shuffle=detector.shuffle, partial=detector.partial)
 
-    # Create the autoencoder
+    # Create the autoencoder network
     model = Chain(detector.encoder, detector.decoder)
 
     # train the neural network model
-    train!(x -> detector.loss(model(x), x), params(model), ncycle(loader, detector.epochs), detector.opt)
+    state = setup(detector.opt, model)
+    for _ in 1:detector.epochs
+        train!(
+            model,
+            loader,
+            state
+        ) do m, x
+            detector.loss(m(x), x)
+        end
+    end
 
-    scores = detector.loss(model(X), X, agg=instance_mean)
-    return AEModel(model), scores
+    trained_model = AEModel(model, detector.loss)
+    return trained_model, trained_model(X)
 end
 
-function OD.transform(detector::AEDetector, model::AEModel, X::Data)::Scores
-    detector.loss(model.chain(X), X, agg=instance_mean)
+function OD.transform(_::AEDetector, model::AEModel, X::Data)::Scores
+    model(X)
 end
