@@ -1,5 +1,4 @@
-using Flux: train!, params
-using IterTools: ncycle
+using Flux: train!, setup
 using Statistics: mean
 using LinearAlgebra: norm
 
@@ -70,8 +69,26 @@ function OD.fit(detector::ESADDetector, X::Data, y::Labels; verbosity)::Fit
     outlier_class = last(levels(y))
 
     # Calculate loss as described in the paper
-    train!((x, y) -> _esadloss(model[1:2](x), x, model(x), model[1](x), y, detector.λ1, detector.λ2, detector.noise,
-            dims, outlier_class), params(model), ncycle(loader, detector.epochs), detector.opt)
+    pretrain_state = setup(detector.opt, model)
+    for _ in 1:detector.epochs
+        train!(model,
+               loader,
+               pretrain_state
+               ) do m, x, y
+               _esadloss(
+                m[1:2](x),
+                x,
+                m(x),
+                m[1](x),
+                y,
+                detector.λ1,
+                detector.λ2,
+                detector.noise,
+                dims,
+                outlier_class
+            )
+        end
+    end
 
     # Score as described in the paper
     scores = _esadscore(model[1:2](X), X, model(X), dims)
